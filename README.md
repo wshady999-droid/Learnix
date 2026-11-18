@@ -1,2 +1,0 @@
-# Learnix
-AI TRAINNG PLATFORM
