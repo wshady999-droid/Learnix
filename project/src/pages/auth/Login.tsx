@@ -153,7 +153,7 @@ export default function Login() {
 
             <p className="mt-6 text-center text-sm text-muted">
               Don't have an account?{' '}
-              <Link to="/login" className="font-semibold text-primary hover:opacity-80">Contact your administrator</Link>
+              <Link to="/register" className="font-semibold text-primary hover:opacity-80">Create one</Link>
             </p>
           </div>
           <p className="mt-6 text-center text-xs text-muted">© 2026 LearnIx. All rights reserved.</p>

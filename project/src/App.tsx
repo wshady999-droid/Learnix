@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { adminNav, teacherNav, studentNav } from '@/components/layout/navigation';
 import Login from '@/pages/auth/Login';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
+import Register from '@/pages/auth/Register';
 
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import UserManagement from '@/pages/admin/UserManagement';
@@ -45,6 +46,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/admin" element={<DashboardLayout items={adminNav} role="admin" userName="Amelia Hart" />}>
