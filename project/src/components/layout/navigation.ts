@@ -28,6 +28,7 @@ export const teacherNav: NavItem[] = [
   { label: 'Quiz Management', to: '/teacher/quizzes', icon: 'ClipboardList' },
   { label: 'Assignments', to: '/teacher/assignments', icon: 'FileText' },
   { label: 'Student Performance', to: '/teacher/students', icon: 'TrendingUp' },
+  { label: 'AI Assistant', to: '/teacher/assistant', icon: 'Sparkles' },
 ];
 
 export const studentNav: NavItem[] = [

@@ -28,6 +28,7 @@ import QuizManagement from '@/pages/teacher/QuizManagement';
 import TeacherAssignments from '@/pages/teacher/Assignments';
 import StudentPerformance from '@/pages/teacher/StudentPerformance';
 import StudentDetails from '@/pages/teacher/StudentDetails';
+import TeacherAssistant from '@/pages/teacher/TeacherAssistant';
 
 import StudentDashboard from '@/pages/student/StudentDashboard';
 import StudentMyCourses from '@/pages/student/MyCourses';
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="students/:studentId" element={<StudentDetails />} />
             <Route path="profile" element={<ProfilePage roleLabel="Teacher" />} />
             <Route path="settings" element={<AccountSettings />} />
+            <Route path="assistant" element={<TeacherAssistant />} />
           </Route>
         </Route>
 
