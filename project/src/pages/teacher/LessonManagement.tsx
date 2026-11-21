@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
+  MAX_LESSON_FILE_MB,
   addLesson,
   deleteLesson,
   fetchLessons,
@@ -45,6 +46,8 @@ export default function LessonManagement() {
   const [editing, setEditing] = useState<ManagedLesson | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState('');
+  const [progress, setProgress] = useState(0);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -92,6 +95,8 @@ export default function LessonManagement() {
   const openAdd = () => {
     setForm(emptyForm);
     setFile(null);
+    setFileError('');
+    setProgress(0);
     setEditing(null);
     setOpen(true);
   };
@@ -104,8 +109,24 @@ export default function LessonManagement() {
       videoUrl: l.videoUrl,
     });
     setFile(null);
+    setFileError('');
+    setProgress(0);
     setEditing(l);
     setOpen(true);
+  };
+
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0] ?? null;
+    setFileError('');
+    if (picked && picked.size > MAX_LESSON_FILE_MB * 1024 * 1024) {
+      setFile(null);
+      e.target.value = '';
+      setFileError(
+        `This file is ${(picked.size / 1024 / 1024).toFixed(1)} MB. The maximum is ${MAX_LESSON_FILE_MB} MB. Compress it, or upload it to YouTube and paste the link below.`
+      );
+      return;
+    }
+    setFile(picked);
   };
 
   const save = async (e: React.FormEvent) => {
@@ -120,16 +141,18 @@ export default function LessonManagement() {
     };
     try {
       setSaving(true);
+      setProgress(0);
       setError('');
       if (editing) {
         await updateLesson(editing.id, input, {
           courseId,
           file,
           oldFilePath: editing.filePath,
+          onProgress: setProgress,
         });
       } else {
         const nextPosition = lessons.length ? Math.max(...lessons.map((l) => l.position)) + 1 : 0;
-        await addLesson(courseId, input, nextPosition, file);
+        await addLesson(courseId, input, nextPosition, file, setProgress);
       }
       setOpen(false);
       await loadLessons();
@@ -255,7 +278,13 @@ export default function LessonManagement() {
         </div>
       )}
 
-      <Modal open={open} title={editing ? 'Edit lesson' : 'Add lesson'} onClose={() => setOpen(false)}>
+      <Modal
+        open={open}
+        title={editing ? 'Edit lesson' : 'Add lesson'}
+        onClose={() => {
+          if (!saving) setOpen(false);
+        }}
+      >
         <form onSubmit={save} className="space-y-4">
           <div>
             <label htmlFor="l-title" className="label">Title</label>
@@ -294,15 +323,17 @@ export default function LessonManagement() {
           </div>
           <div>
             <label htmlFor="l-file" className="label">
-              Upload file (video, PDF or book)
+              Upload file (video, PDF or book, up to {MAX_LESSON_FILE_MB} MB)
             </label>
             <input
               id="l-file"
               type="file"
               accept="video/*,application/pdf,.epub,.doc,.docx,.ppt,.pptx"
               className="input"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={onPickFile}
+              disabled={saving}
             />
+            {fileError && <p className="mt-1 text-xs text-danger">{fileError}</p>}
             {editing?.fileName && !file && (
               <p className="mt-1 text-xs text-muted">
                 Current file: {editing.fileName} (choose a new one to replace it)
@@ -315,7 +346,7 @@ export default function LessonManagement() {
             )}
           </div>
           <div>
-            <label htmlFor="l-url" className="label">Or video link (optional)</label>
+            <label htmlFor="l-url" className="label">Or video link (faster for big videos)</label>
             <input
               id="l-url"
               type="url"
@@ -325,8 +356,27 @@ export default function LessonManagement() {
               placeholder="https://www.youtube.com/embed/..."
             />
           </div>
+
+          {saving && file && (
+            <div>
+              <div className="h-2 overflow-hidden rounded-full bg-soft">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted">Uploading {progress}%. Please keep this page open.</p>
+            </div>
+          )}
+
           <button type="submit" className="btn-primary w-full" disabled={saving}>
-            {saving ? 'Uploading and saving...' : editing ? 'Save changes' : 'Add lesson'}
+            {saving
+              ? file
+                ? `Uploading ${progress}%...`
+                : 'Saving...'
+              : editing
+              ? 'Save changes'
+              : 'Add lesson'}
           </button>
         </form>
       </Modal>
