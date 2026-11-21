@@ -1,25 +1,25 @@
-import { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { NotificationList } from '@/components/ui/NotificationList';
-import { notifications as seed } from '@/services/mockData';
-import type { Notification } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function StudentNotifications() {
-  const [items, setItems] = useState<Notification[]>(seed);
+  const { profile } = useAuth();
+  const { items, loading, markAllRead, dismiss } = useNotifications(profile?.id);
 
   return (
     <>
       <PageHeader
         title="Notifications"
-        subtitle={`${items.filter((n) => !n.read).length} unread.`}
+        subtitle={loading ? 'Loading...' : `${items.filter((n) => !n.read).length} unread.`}
         actions={
-          <button className="btn-secondary" onClick={() => setItems(items.map((n) => ({ ...n, read: true })))}>
+          <button className="btn-secondary" onClick={markAllRead}>
             Mark all read
           </button>
         }
       />
       <div className="card overflow-hidden">
-        <NotificationList notifications={items} onDismiss={(id) => setItems(items.filter((n) => n.id !== id))} />
+        <NotificationList notifications={items} onDismiss={dismiss} />
       </div>
     </>
   );

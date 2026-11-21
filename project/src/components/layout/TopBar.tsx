@@ -1,11 +1,10 @@
 ﻿import { Bell, Menu, Search, LogOut, Settings, User as UserIcon, ChevronDown, X, Sun, Moon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { notifications as seedNotifications } from '@/services/mockData';
-import type { Notification } from '@/types';
 import { NotificationList } from '@/components/ui/NotificationList';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface TopBarProps {
   role: 'admin' | 'teacher' | 'student';
@@ -18,10 +17,10 @@ const roleLabel = { admin: 'Administrator', teacher: 'Teacher', student: 'Studen
 
 export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProps) {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { items, markAllRead, dismiss, refresh } = useNotifications(profile?.id);
   const [openPanel, setOpenPanel] = useState<'notifications' | 'profile' | null>(null);
-  const [items, setItems] = useState<Notification[]>(seedNotifications);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const unread = items.filter((n) => !n.read).length;
@@ -30,6 +29,15 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
   const handleSignOut = async () => {
     await signOut();
     navigate('/login', { replace: true });
+  };
+
+  const toggleNotifications = () => {
+    if (openPanel === 'notifications') {
+      setOpenPanel(null);
+      return;
+    }
+    refresh();
+    setOpenPanel('notifications');
   };
 
   useEffect(() => {
@@ -69,11 +77,7 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
           {theme === 'dark' ? <Sun size={19} className="text-warning" /> : <Moon size={19} />}
         </button>
 
-        <button
-          onClick={() => setOpenPanel(openPanel === 'notifications' ? null : 'notifications')}
-          className="btn-ghost relative p-2.5"
-          aria-label="Notifications"
-        >
+        <button onClick={toggleNotifications} className="btn-ghost relative p-2.5" aria-label="Notifications">
           <Bell size={19} />
           {unread > 0 && (
             <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
@@ -100,10 +104,17 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
           <div className="card absolute right-4 top-[4.25rem] z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden py-0 shadow-xl animate-fade-in sm:right-6">
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
               <h3 className="font-display text-sm font-semibold text-ink">Notifications</h3>
-              <button onClick={() => setOpenPanel(null)} className="btn-ghost p-1"><X size={16} /></button>
+              <div className="flex items-center gap-1">
+                {unread > 0 && (
+                  <button onClick={markAllRead} className="btn-ghost px-2 py-1 text-xs">
+                    Mark all read
+                  </button>
+                )}
+                <button onClick={() => setOpenPanel(null)} className="btn-ghost p-1"><X size={16} /></button>
+              </div>
             </div>
             <div className="max-h-96 overflow-y-auto">
-              <NotificationList notifications={items} onDismiss={(id) => setItems(items.filter((n) => n.id !== id))} />
+              <NotificationList notifications={items} onDismiss={dismiss} />
             </div>
           </div>
         )}
@@ -112,12 +123,24 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
           <div className="card absolute right-4 top-[4.25rem] z-50 w-60 overflow-hidden py-1.5 shadow-xl animate-fade-in sm:right-6">
             <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
               <p className="text-sm font-semibold text-ink">{userName}</p>
-              <p className="text-xs text-muted">{roleLabel[role]} · LearnIx</p>
+              <p className="text-xs text-muted">{roleLabel[role]} - LearnIx</p>
             </div>
-            <button onClick={() => setOpenPanel(null)} className="btn-ghost w-full justify-start">
+            <button
+              onClick={() => {
+                setOpenPanel(null);
+                if (role === 'student') navigate('/student/profile');
+              }}
+              className="btn-ghost w-full justify-start"
+            >
               <UserIcon size={16} /> View profile
             </button>
-            <button onClick={() => setOpenPanel(null)} className="btn-ghost w-full justify-start">
+            <button
+              onClick={() => {
+                setOpenPanel(null);
+                if (role === 'admin') navigate('/admin/settings');
+              }}
+              className="btn-ghost w-full justify-start"
+            >
               <Settings size={16} /> Settings
             </button>
             <button
