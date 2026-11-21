@@ -74,7 +74,7 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
         </div>
         <div className="relative ml-2 hidden w-72 md:block">
           <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input type="text" placeholder="Search anything..." className="input py-2" />
+          <input type="text" placeholder="Search anything..." className="input py-2 pl-10" />
         </div>
       </div>
 

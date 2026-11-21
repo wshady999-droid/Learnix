@@ -22,7 +22,7 @@ export const adminNav: NavItem[] = [
 
 export const teacherNav: NavItem[] = [
   { label: 'Dashboard', to: '/teacher', icon: 'LayoutDashboard', end: true },
-  { label: 'My Courses', to: '/teacher/courses', icon: 'BookOpen' },
+  { label: 'My Courses', to: '/teacher/courses', icon: 'BookOpen', end: true },
   { label: 'Create Course', to: '/teacher/courses/new', icon: 'FilePlus2' },
   { label: 'Lesson Management', to: '/teacher/lessons', icon: 'PlayCircle' },
   { label: 'Quiz Management', to: '/teacher/quizzes', icon: 'ClipboardList' },

@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { BookOpen, Users, Star, Clock, PlayCircle, Edit3 } from 'lucide-react';
+import { BookOpen, Users, Star, Clock, PlayCircle, Edit3, ArrowLeft, Trash2 } from 'lucide-react';
 import { fetchManagedCourse, type ManagedCourse } from '@/services/courseManagement';
+import { deleteCourse } from '@/services/courseDelete';
 
 export default function CourseDetails() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState<ManagedCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!courseId) {
@@ -53,6 +56,19 @@ export default function CourseDetails() {
       ? `${Math.round(course.totalMinutes / 60)}h`
       : `${course.totalMinutes}m`;
 
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${course.title}"? This cannot be undone.`)) return;
+    try {
+      setDeleting(true);
+      setError('');
+      await deleteCourse(course.id);
+      navigate('/teacher/courses', { replace: true });
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not delete this course.');
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -60,15 +76,32 @@ export default function CourseDetails() {
         subtitle={`${course.categoryName} - ${course.level} - ${duration}`}
         actions={
           <>
+            <Link to="/teacher/courses" className="btn-secondary">
+              <ArrowLeft size={16} /> Back
+            </Link>
             <Link to={`/teacher/lessons?course=${course.id}`} className="btn-secondary">
               <Edit3 size={16} /> Lessons
             </Link>
             <Link to={`/teacher/courses/${course.id}/edit`} className="btn-primary">
               Edit course
             </Link>
+            <button
+              type="button"
+              className="btn-secondary text-danger"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              <Trash2 size={16} /> {deleting ? 'Deleting...' : 'Delete'}
+            </button>
           </>
         }
       />
+
+      {error && (
+        <div className="mb-5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+          {error}
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <div className="relative h-48 sm:h-60">
