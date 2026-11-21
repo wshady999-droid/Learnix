@@ -7,6 +7,9 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 
+import ProfilePage from '@/pages/common/ProfilePage';
+import AccountSettings from '@/pages/common/AccountSettings';
+
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import UserManagement from '@/pages/admin/UserManagement';
 import UserDetails from '@/pages/admin/UserDetails';
@@ -27,7 +30,8 @@ import StudentPerformance from '@/pages/teacher/StudentPerformance';
 import StudentDetails from '@/pages/teacher/StudentDetails';
 
 import StudentDashboard from '@/pages/student/StudentDashboard';
-import StudentMyCourses from '@/pages/student/MyCourses'; import BrowseCourses from '@/pages/student/BrowseCourses';
+import StudentMyCourses from '@/pages/student/MyCourses';
+import BrowseCourses from '@/pages/student/BrowseCourses';
 import StudentCourseDetails from '@/pages/student/StudentCourseDetails';
 import Lessons from '@/pages/student/Lessons';
 import StudentLessons from '@/pages/student/StudentLessons';
@@ -78,13 +82,16 @@ export default function App() {
             <Route path="assignments" element={<TeacherAssignments />} />
             <Route path="students" element={<StudentPerformance />} />
             <Route path="students/:studentId" element={<StudentDetails />} />
+            <Route path="profile" element={<ProfilePage roleLabel="Teacher" />} />
+            <Route path="settings" element={<AccountSettings />} />
           </Route>
         </Route>
 
         <Route element={<ProtectedRoute allow="student" />}>
           <Route path="/student" element={<DashboardLayout items={studentNav} role="student" userName={userName} />}>
             <Route index element={<StudentDashboard />} />
-            <Route path="courses" element={<StudentMyCourses />} /> <Route path="browse" element={<BrowseCourses />} />
+            <Route path="courses" element={<StudentMyCourses />} />
+            <Route path="browse" element={<BrowseCourses />} />
             <Route path="courses/:courseId" element={<StudentCourseDetails />} />
             <Route path="lessons" element={<Lessons />} />
             <Route path="lessons/:courseId" element={<StudentLessons />} />
@@ -98,6 +105,7 @@ export default function App() {
             <Route path="assistant" element={<AIStudyAssistant />} />
             <Route path="notifications" element={<StudentNotifications />} />
             <Route path="profile" element={<StudentProfile />} />
+            <Route path="settings" element={<AccountSettings />} />
           </Route>
         </Route>
 
@@ -106,4 +114,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-

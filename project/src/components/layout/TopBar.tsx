@@ -40,6 +40,17 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
     setOpenPanel('notifications');
   };
 
+  const goToProfile = () => {
+    setOpenPanel(null);
+    // Admin has no separate profile page yet, so it opens Settings.
+    navigate(role === 'admin' ? '/admin/settings' : `/${role}/profile`);
+  };
+
+  const goToSettings = () => {
+    setOpenPanel(null);
+    navigate(`/${role}/settings`);
+  };
+
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpenPanel(null);
@@ -125,22 +136,10 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
               <p className="text-sm font-semibold text-ink">{userName}</p>
               <p className="text-xs text-muted">{roleLabel[role]} - LearnIx</p>
             </div>
-            <button
-              onClick={() => {
-                setOpenPanel(null);
-                if (role === 'student') navigate('/student/profile');
-              }}
-              className="btn-ghost w-full justify-start"
-            >
+            <button onClick={goToProfile} className="btn-ghost w-full justify-start">
               <UserIcon size={16} /> View profile
             </button>
-            <button
-              onClick={() => {
-                setOpenPanel(null);
-                if (role === 'admin') navigate('/admin/settings');
-              }}
-              className="btn-ghost w-full justify-start"
-            >
+            <button onClick={goToSettings} className="btn-ghost w-full justify-start">
               <Settings size={16} /> Settings
             </button>
             <button
