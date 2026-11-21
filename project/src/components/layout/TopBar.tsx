@@ -1,10 +1,11 @@
-import { Bell, Menu, Search, LogOut, Settings, User as UserIcon, ChevronDown, X, Sun, Moon } from 'lucide-react';
+﻿import { Bell, Menu, Search, LogOut, Settings, User as UserIcon, ChevronDown, X, Sun, Moon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notifications as seedNotifications } from '@/services/mockData';
 import type { Notification } from '@/types';
 import { NotificationList } from '@/components/ui/NotificationList';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/context/AuthContext';
 
 interface TopBarProps {
   role: 'admin' | 'teacher' | 'student';
@@ -17,12 +18,19 @@ const roleLabel = { admin: 'Administrator', teacher: 'Teacher', student: 'Studen
 
 export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProps) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [openPanel, setOpenPanel] = useState<'notifications' | 'profile' | null>(null);
   const [items, setItems] = useState<Notification[]>(seedNotifications);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const unread = items.filter((n) => !n.read).length;
+  const initials = (userName || 'U').split(' ').filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -79,7 +87,7 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
           className="flex items-center gap-2.5 rounded-xl p-1.5 pr-2.5 transition-colors hover:bg-soft"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-            {userName.split(' ').map((p) => p[0]).join('')}
+            {initials}
           </span>
           <span className="hidden text-left sm:block">
             <span className="block text-sm font-semibold leading-tight text-ink">{userName}</span>
@@ -113,7 +121,7 @@ export function TopBar({ role, userName, onMenuClick, sectionTitle }: TopBarProp
               <Settings size={16} /> Settings
             </button>
             <button
-              onClick={() => navigate('/login')}
+              onClick={handleSignOut}
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
             >
               <LogOut size={16} /> Sign out

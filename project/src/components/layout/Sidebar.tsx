@@ -1,9 +1,10 @@
-import { NavLink } from 'react-router-dom';
+﻿import { NavLink, useNavigate } from 'react-router-dom';
 import {
   X, LogOut, GraduationCap, LayoutDashboard, Users, BookOpen, Tags, BarChart3, Settings,
   FilePlus2, PlayCircle, ClipboardList, FileText, TrendingUp, Award, Sparkles,
 } from 'lucide-react';
 import type { NavItem } from './navigation';
+import { useAuth } from '@/context/AuthContext';
 
 const icons: Record<string, React.ComponentType<{ size?: number | string; className?: string }>> = {
   LayoutDashboard, Users, BookOpen, Tags, BarChart3, Settings, FilePlus2, PlayCircle,
@@ -24,6 +25,14 @@ const roleTag: Record<SidebarProps['role'], string> = {
 };
 
 export function Sidebar({ items, role, open, onClose }: SidebarProps) {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <>
       {open && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={onClose} />}
@@ -78,7 +87,7 @@ export function Sidebar({ items, role, open, onClose }: SidebarProps) {
         </nav>
 
         <div className="border-t p-4" style={{ borderColor: 'var(--border)' }}>
-          <button onClick={() => (window.location.hash = '')} className="btn-ghost w-full justify-start">
+          <button onClick={handleSignOut} className="btn-ghost w-full justify-start">
             <LogOut size={18} />
             Sign out
           </button>

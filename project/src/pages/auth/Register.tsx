@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -20,34 +20,42 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { supabase } from '@/services/supabase';
 
 type AccountType = 'teacher' | 'student';
 
-interface TeacherFormData {
+interface RegisterFormData {
   fullName: string;
   email: string;
   phone: string;
-  subject: string;
+  details: string;
   institution: string;
   password: string;
   confirmPassword: string;
 }
 
-interface StudentFormData {
-  fullName: string;
-  email: string;
-  phone: string;
-  gradeLevel: string;
-  institution: string;
-  password: string;
-  confirmPassword: string;
-}
+type FormErrors = Partial<Record<keyof RegisterFormData, string>>;
 
-type FormErrors<T> = Partial<Record<keyof T, string>>;
+const SUBJECTS = [
+  'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology',
+  'English', 'History', 'Geography', 'Computer Science',
+  'Art & Design', 'Physical Education', 'Other',
+];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const GRADE_LEVELS = [
+  'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+  'Grade 11', 'Grade 12', 'Undergraduate', 'Postgraduate', 'Professional',
+];
+
+const emptyForm = (): RegisterFormData => ({
+  fullName: '',
+  email: '',
+  phone: '',
+  details: '',
+  institution: '',
+  password: '',
+  confirmPassword: '',
+});
 
 function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -59,8 +67,6 @@ function validatePassword(password: string): string | null {
   if (!/[0-9]/.test(password)) return 'Must contain at least one number.';
   return null;
 }
-
-// ─── Shared input component ───────────────────────────────────────────────────
 
 interface FieldProps {
   id: string;
@@ -85,8 +91,6 @@ function Field({ id, label, error, children }: FieldProps) {
     </div>
   );
 }
-
-// ─── Password field ────────────────────────────────────────────────────────────
 
 interface PasswordFieldProps {
   id: string;
@@ -119,7 +123,7 @@ function PasswordField({
           onChange={(e) => onChange(e.target.value)}
           className="input pl-10 pr-11"
           placeholder={placeholder}
-          autoComplete={id === 'password' ? 'new-password' : 'new-password'}
+          autoComplete="new-password"
         />
         <button
           type="button"
@@ -135,24 +139,19 @@ function PasswordField({
   );
 }
 
-// ─── Teacher Form ─────────────────────────────────────────────────────────────
-
-const SUBJECTS = [
-  'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology',
-  'English', 'History', 'Geography', 'Computer Science',
-  'Art & Design', 'Physical Education', 'Other',
-];
-
-interface TeacherFormProps {
-  data: TeacherFormData;
-  errors: FormErrors<TeacherFormData>;
-  onChange: (field: keyof TeacherFormData, value: string) => void;
+interface RegisterFormProps {
+  accountType: AccountType;
+  data: RegisterFormData;
+  errors: FormErrors;
+  onChange: (field: keyof RegisterFormData, value: string) => void;
 }
 
-function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
+function RegisterForm({ accountType, data, errors, onChange }: RegisterFormProps) {
+  const isTeacher = accountType === 'teacher';
+  const options = isTeacher ? SUBJECTS : GRADE_LEVELS;
+
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Row 1 – Full name */}
       <Field id="fullName" label="Full name" error={errors.fullName}>
         <div className="relative">
           <User size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -162,13 +161,12 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
             value={data.fullName}
             onChange={(e) => onChange('fullName', e.target.value)}
             className="input pl-10"
-            placeholder="Jane Smith"
+            placeholder={isTeacher ? 'Jane Smith' : 'Alex Johnson'}
             autoComplete="name"
           />
         </div>
       </Field>
 
-      {/* Row 2 – Email */}
       <Field id="email" label="Email address" error={errors.email}>
         <div className="relative">
           <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -178,13 +176,12 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
             value={data.email}
             onChange={(e) => onChange('email', e.target.value)}
             className="input pl-10"
-            placeholder="jane@school.edu"
+            placeholder={isTeacher ? 'jane@school.edu' : 'alex@example.com'}
             autoComplete="email"
           />
         </div>
       </Field>
 
-      {/* Row 3 – Phone + Subject side-by-side on md+ */}
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id="phone" label="Phone number" error={errors.phone}>
           <div className="relative">
@@ -195,31 +192,40 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
               value={data.phone}
               onChange={(e) => onChange('phone', e.target.value)}
               className="input pl-10"
-              placeholder="+1 (555) 000-0000"
+              placeholder="+20 100 000 0000"
               autoComplete="tel"
             />
           </div>
         </Field>
 
-        <Field id="subject" label="Subject / Specialisation" error={errors.subject}>
+        <Field
+          id="details"
+          label={isTeacher ? 'Subject / Specialisation' : 'Grade / Study level'}
+          error={errors.details}
+        >
           <div className="relative">
-            <BookOpen size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            {isTeacher ? (
+              <BookOpen size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            ) : (
+              <Briefcase size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            )}
             <select
-              id="subject"
-              value={data.subject}
-              onChange={(e) => onChange('subject', e.target.value)}
+              id="details"
+              value={data.details}
+              onChange={(e) => onChange('details', e.target.value)}
               className="input pl-10 pr-4 appearance-none"
             >
-              <option value="" disabled>Select subject</option>
-              {SUBJECTS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              <option value="" disabled>
+                {isTeacher ? 'Select subject' : 'Select level'}
+              </option>
+              {options.map((o) => (
+                <option key={o} value={o}>{o}</option>
               ))}
             </select>
           </div>
         </Field>
       </div>
 
-      {/* Row 4 – Institution */}
       <Field id="institution" label="School / Institution" error={errors.institution}>
         <div className="relative">
           <School size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -235,7 +241,6 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
         </div>
       </Field>
 
-      {/* Row 5 – Password */}
       <PasswordField
         id="password"
         label="Password"
@@ -245,7 +250,6 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
         hint="At least 8 characters, one uppercase, one number."
       />
 
-      {/* Row 6 – Confirm password */}
       <PasswordField
         id="confirmPassword"
         label="Confirm password"
@@ -257,140 +261,6 @@ function TeacherForm({ data, errors, onChange }: TeacherFormProps) {
     </div>
   );
 }
-
-// ─── Student Form ─────────────────────────────────────────────────────────────
-
-const GRADE_LEVELS = [
-  'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
-  'Grade 11', 'Grade 12', 'Undergraduate', 'Postgraduate', 'Professional',
-];
-
-interface StudentFormProps {
-  data: StudentFormData;
-  errors: FormErrors<StudentFormData>;
-  onChange: (field: keyof StudentFormData, value: string) => void;
-}
-
-function StudentForm({ data, errors, onChange }: StudentFormProps) {
-  return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Row 1 – Full name */}
-      <Field id="fullName" label="Full name" error={errors.fullName}>
-        <div className="relative">
-          <User size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            id="fullName"
-            type="text"
-            value={data.fullName}
-            onChange={(e) => onChange('fullName', e.target.value)}
-            className="input pl-10"
-            placeholder="Alex Johnson"
-            autoComplete="name"
-          />
-        </div>
-      </Field>
-
-      {/* Row 2 – Email */}
-      <Field id="email" label="Email address" error={errors.email}>
-        <div className="relative">
-          <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            id="email"
-            type="email"
-            value={data.email}
-            onChange={(e) => onChange('email', e.target.value)}
-            className="input pl-10"
-            placeholder="alex@example.com"
-            autoComplete="email"
-          />
-        </div>
-      </Field>
-
-      {/* Row 3 – Phone + Grade level */}
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field id="phone" label="Phone number" error={errors.phone}>
-          <div className="relative">
-            <Phone size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              id="phone"
-              type="tel"
-              value={data.phone}
-              onChange={(e) => onChange('phone', e.target.value)}
-              className="input pl-10"
-              placeholder="+1 (555) 000-0000"
-              autoComplete="tel"
-            />
-          </div>
-        </Field>
-
-        <Field id="gradeLevel" label="Grade / Study level" error={errors.gradeLevel}>
-          <div className="relative">
-            <Briefcase size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <select
-              id="gradeLevel"
-              value={data.gradeLevel}
-              onChange={(e) => onChange('gradeLevel', e.target.value)}
-              className="input pl-10 pr-4 appearance-none"
-            >
-              <option value="" disabled>Select level</option>
-              {GRADE_LEVELS.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </div>
-        </Field>
-      </div>
-
-      {/* Row 4 – Institution */}
-      <Field id="institution" label="School / Institution" error={errors.institution}>
-        <div className="relative">
-          <School size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            id="institution"
-            type="text"
-            value={data.institution}
-            onChange={(e) => onChange('institution', e.target.value)}
-            className="input pl-10"
-            placeholder="Westfield Academy"
-            autoComplete="organization"
-          />
-        </div>
-      </Field>
-
-      {/* Row 5 – Password */}
-      <PasswordField
-        id="password"
-        label="Password"
-        value={data.password}
-        onChange={(v) => onChange('password', v)}
-        error={errors.password}
-        hint="At least 8 characters, one uppercase, one number."
-      />
-
-      {/* Row 6 – Confirm password */}
-      <PasswordField
-        id="confirmPassword"
-        label="Confirm password"
-        value={data.confirmPassword}
-        onChange={(v) => onChange('confirmPassword', v)}
-        error={errors.confirmPassword}
-        placeholder="Repeat your password"
-      />
-    </div>
-  );
-}
-
-// ─── Default form data factories ──────────────────────────────────────────────
-
-const defaultTeacher = (): TeacherFormData => ({
-  fullName: '', email: '', phone: '', subject: '', institution: '', password: '', confirmPassword: '',
-});
-
-const defaultStudent = (): StudentFormData => ({
-  fullName: '', email: '', phone: '', gradeLevel: '', institution: '', password: '', confirmPassword: '',
-});
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Register() {
   const navigate = useNavigate();
@@ -400,99 +270,83 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [globalError, setGlobalError] = useState('');
-
-  // Form data per role
-  const [teacherData, setTeacherData] = useState<TeacherFormData>(defaultTeacher);
-  const [teacherErrors, setTeacherErrors] = useState<FormErrors<TeacherFormData>>({});
-
-  const [studentData, setStudentData] = useState<StudentFormData>(defaultStudent);
-  const [studentErrors, setStudentErrors] = useState<FormErrors<StudentFormData>>({});
-
-  // ── Handlers ──
+  const [data, setData] = useState<RegisterFormData>(emptyForm);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleAccountTypeChange = (type: AccountType) => {
+    if (type === accountType) return;
     setAccountType(type);
     setGlobalError('');
-    // Reset errors of the form we're leaving so stale errors don't bleed through
-    setTeacherErrors({});
-    setStudentErrors({});
+    setErrors({});
+    setData((prev) => ({ ...prev, details: '' }));
   };
 
-  const handleTeacherChange = (field: keyof TeacherFormData, value: string) => {
-    setTeacherData((prev) => ({ ...prev, [field]: value }));
-    if (teacherErrors[field]) setTeacherErrors((prev) => ({ ...prev, [field]: undefined }));
+  const handleChange = (field: keyof RegisterFormData, value: string) => {
+    setData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleStudentChange = (field: keyof StudentFormData, value: string) => {
-    setStudentData((prev) => ({ ...prev, [field]: value }));
-    if (studentErrors[field]) setStudentErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  // ── Validation ──
-
-  function validateTeacher(): boolean {
-    const errs: FormErrors<TeacherFormData> = {};
-    if (!teacherData.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!teacherData.email.trim()) errs.email = 'Email address is required.';
-    else if (!validateEmail(teacherData.email)) errs.email = 'Please enter a valid email address.';
-    if (!teacherData.phone.trim()) errs.phone = 'Phone number is required.';
-    if (!teacherData.subject) errs.subject = 'Please select a subject.';
-    if (!teacherData.institution.trim()) errs.institution = 'Institution is required.';
-    const pwErr = validatePassword(teacherData.password);
-    if (!teacherData.password) errs.password = 'Password is required.';
+  function validate(): boolean {
+    const errs: FormErrors = {};
+    if (!data.fullName.trim()) errs.fullName = 'Full name is required.';
+    if (!data.email.trim()) errs.email = 'Email address is required.';
+    else if (!validateEmail(data.email.trim())) errs.email = 'Please enter a valid email address.';
+    if (!data.phone.trim()) errs.phone = 'Phone number is required.';
+    if (!data.details) {
+      errs.details = accountType === 'teacher' ? 'Please select a subject.' : 'Please select your study level.';
+    }
+    if (!data.institution.trim()) errs.institution = 'Institution is required.';
+    const pwErr = validatePassword(data.password);
+    if (!data.password) errs.password = 'Password is required.';
     else if (pwErr) errs.password = pwErr;
-    if (!teacherData.confirmPassword) errs.confirmPassword = 'Please confirm your password.';
-    else if (teacherData.password !== teacherData.confirmPassword)
-      errs.confirmPassword = 'Passwords do not match.';
-    setTeacherErrors(errs);
+    if (!data.confirmPassword) errs.confirmPassword = 'Please confirm your password.';
+    else if (data.password !== data.confirmPassword) errs.confirmPassword = 'Passwords do not match.';
+    setErrors(errs);
     return Object.keys(errs).length === 0;
   }
 
-  function validateStudent(): boolean {
-    const errs: FormErrors<StudentFormData> = {};
-    if (!studentData.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!studentData.email.trim()) errs.email = 'Email address is required.';
-    else if (!validateEmail(studentData.email)) errs.email = 'Please enter a valid email address.';
-    if (!studentData.phone.trim()) errs.phone = 'Phone number is required.';
-    if (!studentData.gradeLevel) errs.gradeLevel = 'Please select your study level.';
-    if (!studentData.institution.trim()) errs.institution = 'Institution is required.';
-    const pwErr = validatePassword(studentData.password);
-    if (!studentData.password) errs.password = 'Password is required.';
-    else if (pwErr) errs.password = pwErr;
-    if (!studentData.confirmPassword) errs.confirmPassword = 'Please confirm your password.';
-    else if (studentData.password !== studentData.confirmPassword)
-      errs.confirmPassword = 'Passwords do not match.';
-    setStudentErrors(errs);
-    return Object.keys(errs).length === 0;
-  }
-
-  // ── Submit ──
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
-
-    const valid = accountType === 'teacher' ? validateTeacher() : validateStudent();
-    if (!valid) return;
+    if (!validate()) return;
 
     setLoading(true);
-    // Simulate async registration (frontend-only project)
-    setTimeout(() => {
+    const { error } = await supabase.auth.signUp({
+      email: data.email.trim(),
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.fullName.trim(),
+          requested_role: accountType,
+          phone: data.phone.trim(),
+          institution: data.institution.trim(),
+          details: data.details,
+        },
+      },
+    });
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('already')) setGlobalError('This email is already registered. Try signing in.');
+      else if (msg.includes('rate')) setGlobalError('Too many attempts. Please wait a minute and try again.');
+      else setGlobalError(error.message);
       setLoading(false);
-      setSuccess(true);
-    }, 1200);
+      return;
+    }
+
+    // Make sure the user starts from the sign in page
+    await supabase.auth.signOut();
+    setLoading(false);
+    setSuccess(true);
   };
 
-  // ── Success screen ──
   if (success) {
-    const name =
-      accountType === 'teacher' ? teacherData.fullName : studentData.fullName;
+    const firstName = data.fullName.trim().split(' ')[0];
     return (
       <div
         className="flex min-h-screen flex-col items-center justify-center px-6 py-12"
         style={{ backgroundColor: 'var(--bg)' }}
       >
-        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -503,7 +357,6 @@ export default function Register() {
         </button>
 
         <div className="w-full max-w-md animate-slide-up">
-          {/* Logo */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-primary-glow">
@@ -520,19 +373,14 @@ export default function Register() {
               <CheckCircle2 size={32} />
             </span>
             <h2 className="mt-5 font-display text-2xl font-bold text-ink">
-              Welcome aboard, {name.split(' ')[0]}!
+              Welcome aboard, {firstName}!
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Your{' '}
-              <span className="font-semibold text-ink">
-                {accountType === 'teacher' ? 'Teacher' : 'Student'}
-              </span>{' '}
-              account has been created. An admin will review and activate it shortly.
+              {accountType === 'teacher'
+                ? 'Your Teacher account has been created. Check your email and click the confirmation link, then sign in.'
+                : 'Your Student account has been created. Check your email and click the confirmation link, then sign in.'}
             </p>
-            <button
-              onClick={() => navigate('/login')}
-              className="btn-primary mt-8 w-full py-3"
-            >
+            <button onClick={() => navigate('/login')} className="btn-primary mt-8 w-full py-3">
               Go to sign in <ArrowRight size={16} />
             </button>
           </div>
@@ -542,18 +390,14 @@ export default function Register() {
     );
   }
 
-  // ── Main render ──
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-      {/* ── Left showcase panel (hidden on mobile / tablet) ── */}
+      {/* Left showcase panel */}
       <div className="relative hidden w-1/2 overflow-hidden lg:flex lg:flex-col lg:justify-between bg-[#0B0B0D]">
-        {/* Glow blobs */}
         <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-[#FF3038]/15 blur-3xl" />
-        {/* Top accent bar */}
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-[#FF3038]" />
 
-        {/* Logo */}
         <div className="relative z-10 p-10">
           <div className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-primary-glow">
@@ -565,7 +409,6 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Bottom copy */}
         <div className="relative z-10 px-10 pb-10">
           <h1 className="max-w-md font-display text-4xl font-bold leading-tight text-white">
             Start your journey with LearnIx today.
@@ -576,8 +419,8 @@ export default function Register() {
           <div className="mt-10 space-y-5">
             {[
               { icon: GraduationCap, text: 'Role-based dashboards for teachers and students' },
-              { icon: LineChart,     text: 'Real-time progress tracking and performance insights' },
-              { icon: Sparkles,      text: 'AI study assistant that helps students learn faster' },
+              { icon: LineChart, text: 'Real-time progress tracking and performance insights' },
+              { icon: Sparkles, text: 'AI study assistant that helps students learn faster' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
@@ -590,9 +433,8 @@ export default function Register() {
         </div>
       </div>
 
-      {/* ── Right form panel ── */}
+      {/* Right form panel */}
       <div className="relative flex w-full flex-col items-center justify-center px-6 py-12 lg:w-1/2">
-        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -603,7 +445,6 @@ export default function Register() {
         </button>
 
         <div className="w-full max-w-md animate-slide-up">
-          {/* Logo (mobile-only — hidden on lg because it shows in the left panel) */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-primary-glow">
@@ -617,11 +458,8 @@ export default function Register() {
 
           <div className="card p-8">
             <h2 className="font-display text-2xl font-bold text-ink">Create your account</h2>
-            <p className="mt-1.5 text-sm text-muted">
-              Join LearnIx — choose your role to get started.
-            </p>
+            <p className="mt-1.5 text-sm text-muted">Join LearnIx — choose your role to get started.</p>
 
-            {/* ── Account type selector ── */}
             <div className="mt-6 grid grid-cols-2 gap-2 rounded-xl bg-soft p-1.5">
               {(['student', 'teacher'] as AccountType[]).map((type) => (
                 <button
@@ -629,9 +467,7 @@ export default function Register() {
                   type="button"
                   onClick={() => handleAccountTypeChange(type)}
                   className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                    accountType === type
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted hover:text-ink'
+                    accountType === type ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-ink'
                   }`}
                 >
                   {type === 'student' ? <GraduationCap size={15} /> : <Briefcase size={15} />}
@@ -640,48 +476,30 @@ export default function Register() {
               ))}
             </div>
 
-            {/* Role description badge */}
             <p className="mt-3 text-xs text-muted">
               {accountType === 'teacher'
                 ? 'As a teacher you can create courses, manage lessons, set quizzes and track student performance.'
                 : 'As a student you can enrol in courses, complete lessons and quizzes, and track your progress.'}
             </p>
 
-            {/* ── Global error ── */}
             {globalError && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-danger animate-fade-in"
-                style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <div
+                className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-danger animate-fade-in"
+                style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+              >
                 <AlertCircle size={16} className="shrink-0" />
                 {globalError}
               </div>
             )}
 
-            {/* ── Dynamic form ── */}
             <form onSubmit={handleSubmit} noValidate className="mt-6">
-              {accountType === 'teacher' ? (
-                <TeacherForm
-                  data={teacherData}
-                  errors={teacherErrors}
-                  onChange={handleTeacherChange}
-                />
-              ) : (
-                <StudentForm
-                  data={studentData}
-                  errors={studentErrors}
-                  onChange={handleStudentChange}
-                />
-              )}
+              <RegisterForm accountType={accountType} data={data} errors={errors} onChange={handleChange} />
 
-              {/* ── Submit button ── */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary mt-8 w-full py-3"
-              >
+              <button type="submit" disabled={loading} className="btn-primary mt-8 w-full py-3">
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Creating account…
+                    Creating account...
                   </span>
                 ) : (
                   <>
@@ -692,7 +510,6 @@ export default function Register() {
               </button>
             </form>
 
-            {/* ── Footer links ── */}
             <p className="mt-6 text-center text-sm text-muted">
               Already have an account?{' '}
               <Link to="/login" className="font-semibold text-primary hover:opacity-80">

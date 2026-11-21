@@ -1,29 +1,35 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, GraduationCap, LineChart, Sparkles, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-
-const roles = [
-  { id: 'admin', label: 'Admin' },
-  { id: 'teacher', label: 'Teacher' },
-  { id: 'student', label: 'Student' },
-] as const;
+import { supabase } from '@/services/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { profile, session } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<(typeof roles)[number]['id']>('student');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (session && profile) {
+      navigate(`/${profile.role}`, { replace: true });
+    }
+  }, [session, profile, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'teacher') navigate('/teacher');
-      else navigate('/student');
-    }, 600);
+    setError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message.toLowerCase().includes('confirm') ? 'Please confirm your email first. Check your inbox.' : 'Invalid email or password');
+      setLoading(false);
+    }
   };
 
   return (
@@ -93,27 +99,20 @@ export default function Login() {
             <h2 className="font-display text-2xl font-bold text-ink">Welcome back</h2>
             <p className="mt-1.5 text-sm text-muted">Sign in to your LearnIx account to continue.</p>
 
-            <div className="mt-6 grid grid-cols-3 gap-2 rounded-xl bg-soft p-1.5">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRole(r.id)}
-                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-                    role === r.id ? 'bg-primary text-white shadow-sm' : 'text-muted hover:text-ink'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div>
                 <label htmlFor="email" className="label">Email address</label>
                 <div className="relative">
                   <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  <input id="email" type="email" required defaultValue="alex@learnix.io" className="input pl-10" placeholder="you@example.com" />
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="input pl-10"
+                    placeholder="you@example.com"
+                  />
                 </div>
               </div>
               <div>
@@ -125,7 +124,15 @@ export default function Login() {
                 </div>
                 <div className="relative">
                   <Lock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  <input id="password" type={showPassword ? 'text' : 'password'} required defaultValue="learnix123" className="input pl-10 pr-11" placeholder="Enter your password" />
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="input pl-10 pr-11"
+                    placeholder="Enter your password"
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -136,6 +143,9 @@ export default function Login() {
                   </button>
                 </div>
               </div>
+
+              {error && <p className="text-sm font-medium text-danger">{error}</p>}
+
               <button type="submit" disabled={loading} className="btn-primary w-full py-3">
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -144,7 +154,7 @@ export default function Login() {
                   </span>
                 ) : (
                   <>
-                    Sign in as {roles.find((r) => r.id === role)?.label}
+                    Sign in
                     <ArrowRight size={16} />
                   </>
                 )}
@@ -152,8 +162,10 @@ export default function Login() {
             </form>
 
             <p className="mt-6 text-center text-sm text-muted">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-semibold text-primary hover:opacity-80">Create one</Link>
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="font-semibold text-primary hover:opacity-80">
+                Create account
+              </Link>
             </p>
           </div>
           <p className="mt-6 text-center text-xs text-muted">© 2026 LearnIx. All rights reserved.</p>
@@ -162,3 +174,4 @@ export default function Login() {
     </div>
   );
 }
+
