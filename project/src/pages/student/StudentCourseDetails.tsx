@@ -166,13 +166,14 @@ export default function StudentCourseDetails() {
                       {l.completed ? <CheckCircle2 size={17} /> : <Circle size={15} />}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p
-                        className={`truncate text-sm font-medium ${
+                      <Link
+                        to={`/student/lessons/${course.id}/${l.id}`}
+                        className={`block truncate text-sm font-medium hover:text-primary ${
                           l.completed ? 'text-ink' : 'text-muted'
                         }`}
                       >
                         {l.title}
-                      </p>
+                      </Link>
                       <p className="text-xs capitalize text-muted">
                         {l.type} - {l.durationMinutes} min
                       </p>

@@ -10,6 +10,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Paperclip,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -43,6 +44,7 @@ export default function LessonManagement() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ManagedLesson | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export default function LessonManagement() {
 
   const openAdd = () => {
     setForm(emptyForm);
+    setFile(null);
     setEditing(null);
     setOpen(true);
   };
@@ -100,6 +103,7 @@ export default function LessonManagement() {
       durationMinutes: String(l.durationMinutes),
       videoUrl: l.videoUrl,
     });
+    setFile(null);
     setEditing(l);
     setOpen(true);
   };
@@ -118,10 +122,14 @@ export default function LessonManagement() {
       setSaving(true);
       setError('');
       if (editing) {
-        await updateLesson(editing.id, input);
+        await updateLesson(editing.id, input, {
+          courseId,
+          file,
+          oldFilePath: editing.filePath,
+        });
       } else {
         const nextPosition = lessons.length ? Math.max(...lessons.map((l) => l.position)) + 1 : 0;
-        await addLesson(courseId, input, nextPosition);
+        await addLesson(courseId, input, nextPosition, file);
       }
       setOpen(false);
       await loadLessons();
@@ -219,6 +227,11 @@ export default function LessonManagement() {
                   <p className="text-xs capitalize text-muted">
                     {l.type} - {l.durationMinutes} min
                   </p>
+                  {l.fileName && (
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-primary">
+                      <Paperclip size={12} /> {l.fileName}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   <button
@@ -280,18 +293,40 @@ export default function LessonManagement() {
             />
           </div>
           <div>
-            <label htmlFor="l-url" className="label">Video link (optional)</label>
+            <label htmlFor="l-file" className="label">
+              Upload file (video, PDF or book)
+            </label>
+            <input
+              id="l-file"
+              type="file"
+              accept="video/*,application/pdf,.epub,.doc,.docx,.ppt,.pptx"
+              className="input"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            {editing?.fileName && !file && (
+              <p className="mt-1 text-xs text-muted">
+                Current file: {editing.fileName} (choose a new one to replace it)
+              </p>
+            )}
+            {file && (
+              <p className="mt-1 text-xs text-muted">
+                {file.name} - {(file.size / 1024 / 1024).toFixed(1)} MB
+              </p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="l-url" className="label">Or video link (optional)</label>
             <input
               id="l-url"
               type="url"
               className="input"
               value={form.videoUrl}
               onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-              placeholder="https://..."
+              placeholder="https://www.youtube.com/embed/..."
             />
           </div>
           <button type="submit" className="btn-primary w-full" disabled={saving}>
-            {saving ? 'Saving...' : editing ? 'Save changes' : 'Add lesson'}
+            {saving ? 'Uploading and saving...' : editing ? 'Save changes' : 'Add lesson'}
           </button>
         </form>
       </Modal>
