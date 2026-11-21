@@ -33,6 +33,7 @@ export const teacherNav: NavItem[] = [
 export const studentNav: NavItem[] = [
   { label: 'Dashboard', to: '/student', icon: 'LayoutDashboard', end: true },
   { label: 'My Courses', to: '/student/courses', icon: 'BookOpen' },
+  { label: 'Browse Courses', to: '/student/browse', icon: 'PlayCircle' },
   { label: 'Available Quizzes', to: '/student/quizzes', icon: 'ClipboardList' },
   { label: 'Quiz Results', to: '/student/results', icon: 'Award' },
   { label: 'Assignments', to: '/student/assignments', icon: 'FileText' },
